@@ -2,6 +2,7 @@
 The MIT License
 
 Copyright (c) 2011 Matthew Wilcoxson (www.akademy.co.uk)
+Copyright (c) 2011 Peter Tribble (www.petertribble.co.uk)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +28,7 @@ By Matthew Wilcoxson
 
 Description:    Zooming of very large images with Javascript, HTML5 and the canvas element (based on DeepZoom format).
 Website:        http://www.akademy.co.uk/software/canvaszoom/canvaszoom.php
-Version:        1.0.2
+Version:        1.0.3
 
 global ImageLoader, window  (for JSLint) 
 */
@@ -78,6 +79,7 @@ function CanvasZoom( _canvas, _tilesFolder, _imageWidth, _imageHeight )
             zoomIn, zoomOut, 
             zoomInMouse, zoomOutMouse,
 		mousePosX, mousePosY, 
+		touchPosX, touchPosY, touchDown, touchUp, touchMove,
 			mouseUp, mouseMove, mouseUpWindow, mouseMoveWindow,
 			mouseDown, mouseOut, mouseOver,mouseWheel,
 		initialTilesLoaded, calculateNeededTiles, getTiles, tileLoaded,
@@ -120,6 +122,10 @@ function CanvasZoom( _canvas, _tilesFolder, _imageWidth, _imageHeight )
 		_canvas.addEventListener(mouse+'down', function (e) { mouseDown( getEvent(e) ); }, true);
 		_canvas.addEventListener(mouse+'up', function (e) { mouseUp( getEvent(e) ); }, true);
 		
+		_canvas.addEventListener('touchstart', function (e) { touchDown( getEvent(e) ); }, false);
+		_canvas.addEventListener('touchend', function (e) { touchUp( getEvent(e) ); }, false);
+		_canvas.addEventListener('touchmove', function (e) { touchMove( getEvent(e) ); }, false);
+
 		_canvas.addEventListener(mouse+'out', function (e) { mouseOut( getEvent(e) ); }, true);
 		_canvas.addEventListener(mouse+'over', function (e) { mouseOver( getEvent(e) ); }, true);
 		_canvas.addEventListener('DOMMouseScroll', function (e) { mouseWheel( getEvent(e) ); }, true);
@@ -153,6 +159,18 @@ function CanvasZoom( _canvas, _tilesFolder, _imageWidth, _imageHeight )
 		_mouseMoveY = _mouseDownY;
 	};
 	
+	touchDown = function( event ) {
+		event.preventDefault();
+		_mouseIsDown = true;
+		_mouseLeftWhileDown = false;
+		
+		_mouseDownX = touchPosX(event);
+		_mouseDownY = touchPosY(event); 
+		
+		_mouseMoveX = _mouseDownX;
+		_mouseMoveY = _mouseDownY;
+	};
+	
 	mouseUp = function( event ) {
 		_mouseIsDown = false;
 		_mouseLeftWhileDown = false;
@@ -168,9 +186,47 @@ function CanvasZoom( _canvas, _tilesFolder, _imageWidth, _imageHeight )
 		}
 	};
 	
+	touchUp = function( event ) {
+		_mouseIsDown = false;
+		_mouseLeftWhileDown = false;
+		
+		_mouseX = touchPosX(event);
+		_mouseY = touchPosY(event); 
+		
+		if( _mouseX === _mouseDownX &&
+			 _mouseY === _mouseDownY )
+		{
+			// Didn't drag so assume a click.
+			zoomInMouse();
+		}
+	};
+	
 	mouseMove = function(event) {
 		_mouseX = mousePosX(event);
 		_mouseY = mousePosY(event); 
+
+		if( _mouseIsDown )
+		{
+			var newOffsetX = _offsetX + (_mouseX - _mouseMoveX);
+			var newOffsetY = _offsetY + (_mouseY - _mouseMoveY);
+			
+			calculateNeededTiles( _zoomLevel, newOffsetX, newOffsetY );
+			
+			_mouseMoveX = _mouseX;
+			_mouseMoveY = _mouseY;
+			
+			_offsetX = newOffsetX;
+			_offsetY = newOffsetY;
+			
+			paint();
+		}
+	};
+	
+	touchMove = function(event) {
+		event.preventDefault();
+		event.stopPropagation();
+		_mouseX = touchPosX(event);
+		_mouseY = touchPosY(event); 
 
 		if( _mouseIsDown )
 		{
@@ -211,6 +267,28 @@ function CanvasZoom( _canvas, _tilesFolder, _imageWidth, _imageHeight )
 			y = event.offsetY;
 		}
 		
+		return y;
+	};
+    
+	// touchend populates changedTouches instead of targetTouches
+	touchPosX = function( event ) {
+		// Get the mouse position relative to the canvas element.
+		var x = 0;
+		if (event.targetTouches[0]) {
+			x = event.targetTouches[0].pageX - _canvas.offsetLeft;
+		} else {
+			x = event.changedTouches[0].pageX - _canvas.offsetLeft;
+		}
+		return x;
+	};
+	
+	touchPosY = function( event ) {
+		var y = 0;
+		if (event.targetTouches[0]) {
+			y = event.targetTouches[0].pageY - _canvas.offsetTop;
+		} else {
+			y = event.changedTouches[0].pageY - _canvas.offsetTop;
+		}
 		return y;
 	};
     
