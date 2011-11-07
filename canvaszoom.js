@@ -28,7 +28,7 @@ By Matthew Wilcoxson
 
 Description:    Zooming of very large images with Javascript, HTML5 and the canvas element (based on DeepZoom format).
 Website:        http://www.akademy.co.uk/software/canvaszoom/canvaszoom.php
-Version:        1.0.3
+Version:        1.0.4
 
 global ImageLoader, window  (for JSLint) 
 */
@@ -64,6 +64,8 @@ function CanvasZoom( _canvas, _tilesFolder, _imageWidth, _imageHeight )
 	var _offsetX = 0;
 	var _offsetY = 0;
 
+	var _lastscale = 1.0;
+
 	var _aGetWidth = 'w';
 	var _aGetHeight = 'h';
 	var _aGetTile = 't';
@@ -80,6 +82,7 @@ function CanvasZoom( _canvas, _tilesFolder, _imageWidth, _imageHeight )
             zoomInMouse, zoomOutMouse,
 		mousePosX, mousePosY, 
 		touchPosX, touchPosY, touchDown, touchUp, touchMove,
+			gestureEnd, gestureChange,
 			mouseUp, mouseMove, mouseUpWindow, mouseMoveWindow,
 			mouseDown, mouseOut, mouseOver,mouseWheel,
 		initialTilesLoaded, calculateNeededTiles, getTiles, tileLoaded,
@@ -125,6 +128,11 @@ function CanvasZoom( _canvas, _tilesFolder, _imageWidth, _imageHeight )
 		_canvas.addEventListener('touchstart', function (e) { touchDown( getEvent(e) ); }, false);
 		_canvas.addEventListener('touchend', function (e) { touchUp( getEvent(e) ); }, false);
 		_canvas.addEventListener('touchmove', function (e) { touchMove( getEvent(e) ); }, false);
+
+		// gestures to handle pinch
+		_canvas.addEventListener('gestureend', function (e) { gestureEnd( getEvent(e) ); }, false);
+		// don't let a gesturechange event propagate
+		_canvas.addEventListener('gesturechange', function (e) { gestureChange( getEvent(e) ); }, true);
 
 		_canvas.addEventListener(mouse+'out', function (e) { mouseOut( getEvent(e) ); }, true);
 		_canvas.addEventListener(mouse+'over', function (e) { mouseOver( getEvent(e) ); }, true);
@@ -245,7 +253,24 @@ function CanvasZoom( _canvas, _tilesFolder, _imageWidth, _imageHeight )
 		}
 	};
 	
-    mousePosX = function( event ) {
+	gestureEnd = function(event) {
+		_lastscale = 1.0;
+	};
+
+	gestureChange = function(event) {
+		event.preventDefault();
+		var scale = event.scale;
+		if (scale < 0.75*_lastscale) {
+			zoomOutMouse();
+			_lastscale = scale;
+		}
+		if (scale > 1.25*_lastscale) {
+			zoomInMouse();
+			_lastscale = scale;
+		}
+	};
+
+	mousePosX = function( event ) {
 		// Get the mouse position relative to the canvas element.
 		var x = 0;
 		
