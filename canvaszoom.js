@@ -83,6 +83,7 @@ function CanvasZoom( _canvas, _tilesFolder, _imageWidth, _imageHeight )
 		mousePosX, mousePosY, 
 		touchPosX, touchPosY, touchDown, touchUp, touchMove,
 			gestureEnd, gestureChange,
+			handleKeyPress, handleKeyDown, moveCoords,
 			mouseUp, mouseMove, mouseUpWindow, mouseMoveWindow,
 			mouseDown, mouseOut, mouseOver,mouseWheel,
 		initialTilesLoaded, calculateNeededTiles, getTiles, tileLoaded,
@@ -142,6 +143,10 @@ function CanvasZoom( _canvas, _tilesFolder, _imageWidth, _imageHeight )
 		// Keep track even if mouse is outside of canvas while dragging image
 		window.addEventListener(mouse+'up', function (e) { mouseUpWindow( getEvent(e) ); }, false);
 		window.addEventListener(mouse+'move', function (e) { mouseMoveWindow( getEvent(e) ); }, false);
+
+		// keyboard interactions
+		window.addEventListener('keypress', function (e) { handleKeyPress( getEvent(e) ); }, true);
+		window.addEventListener('keydown', function (e) { handleKeyDown( getEvent(e) ); }, true);
 		
 		_ctx = _canvas.getContext('2d');
 		
@@ -156,6 +161,43 @@ function CanvasZoom( _canvas, _tilesFolder, _imageWidth, _imageHeight )
 		return event;
 	};
     
+	handleKeyPress = function( event ) {
+		var thiskey = event.charCode || event.keyCode;
+		switch ( thiskey ) {
+		case 37:
+			moveCoords( -10, 0 );
+			break;
+		case 38:
+			moveCoords( 0, -10 );
+			break;
+		case 39:
+			moveCoords( 10, 0 );
+			break;
+		case 40:
+			moveCoords( 0, 10 );
+			break;
+		case 36:
+			zoom( _zoomLevelMin, _canvas.width / 2, _canvas.height / 2 );
+			break;
+		case 43:
+			zoomIn( _canvas.width / 2, _canvas.height / 2 );
+			break;
+		case 45:
+			zoomOut( _canvas.width / 2, _canvas.height / 2 );
+			break;
+		};
+	};
+
+	handleKeyDown = function( event ) {
+		var thiskey = event.charCode || event.keyCode;
+		switch ( thiskey ) {
+		case 36:
+			zoom( _zoomLevelMin, _canvas.width / 2, _canvas.height / 2 );
+			paint();
+			break;
+		};
+	};
+
 	mouseDown = function( event ) {
 		_mouseIsDown = true;
 		_mouseLeftWhileDown = false;
@@ -251,6 +293,21 @@ function CanvasZoom( _canvas, _tilesFolder, _imageWidth, _imageHeight )
 			
 			paint();
 		}
+	};
+
+	moveCoords = function (dx, dy) {
+			var newOffsetX = _offsetX + dx;
+			var newOffsetY = _offsetY + dy;
+			
+			calculateNeededTiles( _zoomLevel, newOffsetX, newOffsetY );
+			
+			_mouseMoveX = _mouseX - dx;
+			_mouseMoveY = _mouseY - dx;
+			
+			_offsetX = newOffsetX;
+			_offsetY = newOffsetY;
+			
+			paint();
 	};
 	
 	gestureEnd = function(event) {
@@ -699,7 +756,7 @@ function CanvasZoom( _canvas, _tilesFolder, _imageWidth, _imageHeight )
 		_zoomLevel = zoomLevelStart;
 		// dont allow zoom out beyond initial state
 		_zoomLevelMin = zoomLevelStart;
-
+		
 		//
 		// Initial tile load
 		//
