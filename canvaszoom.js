@@ -697,7 +697,9 @@ function CanvasZoom( _canvas, _tilesFolder, _imageWidth, _imageHeight )
 		}
 		
 		_zoomLevel = zoomLevelStart;
-		
+		// dont allow zoom out beyond initial state
+		_zoomLevelMin = zoomLevelStart;
+
 		//
 		// Initial tile load
 		//
